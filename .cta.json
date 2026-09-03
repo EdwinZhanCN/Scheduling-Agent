@@ -1,0 +1,18 @@
+{
+  "projectName": "scheduling-agent",
+  "mode": "file-router",
+  "typescript": true,
+  "tailwind": true,
+  "packageManager": "pnpm",
+  "git": false,
+  "install": true,
+  "intent": false,
+  "addOnOptions": {},
+  "projectPreset": "blank",
+  "includeExamples": false,
+  "routerOnly": false,
+  "version": 1,
+  "addOns": true,
+  "framework": "react",
+  "chosenAddOns": ["eslint", "shadcn"]
+}

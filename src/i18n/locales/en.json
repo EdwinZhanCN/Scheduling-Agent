@@ -1,0 +1,84 @@
+{
+  "topbar": {
+    "menu": "Menu",
+    "close": "Close",
+    "prev": "Previous",
+    "next": "Next",
+    "demoWeek": "Demo Week",
+    "today": "Today",
+    "monthView": "Month",
+    "weekView": "Week",
+    "dayView": "Day",
+    "pending": "Pending",
+    "appMenu": "Application Menu",
+    "toggleAgent": "Toggle Agent Panel"
+  },
+  "sidebar": {
+    "workspace": "Workspace",
+    "calendarView": "Calendar View",
+    "pendingProposals": "Pending Proposals",
+    "myCalendars": "My Calendars",
+    "courses": "Courses",
+    "personal": "Personal",
+    "aiReview": "AI Review",
+    "proposalBadge": "Proposal",
+    "itemCount_one": "{{count}} item",
+    "itemCount_other": "{{count}} items",
+    "settings": "Settings",
+    "about": "About",
+    "appName": "Scheduling Agent",
+    "appSubtitle": "Local Workspace",
+    "menu": {
+      "settings": "Settings",
+      "about": "About Scheduling Agent"
+    }
+  },
+  "workbench": {
+    "title": "This Week's Schedule",
+    "description": "Layered view of confirmed events and AI pending proposals",
+    "demoData": "Demo Data",
+    "tabs": {
+      "calendar": "Calendar",
+      "agent": "Agent Review"
+    }
+  },
+  "agent": {
+    "title": "Scheduling Agent",
+    "subtitle": "Proposals require approval before writing to calendar",
+    "pendingCount_one": "{{count}} pending",
+    "pendingCount_other": "{{count}} pending",
+    "ready": "Ready",
+    "completed": "Completed",
+    "userLabel": "You",
+    "agentLabel": "Agent",
+    "scrollToBottom": "Scroll to bottom",
+    "promptPlaceholder": "Enter scheduling request, e.g. Block 2 hours on Thursday morning for study",
+    "shortcutHint": "Enter to send · Shift + Enter for new line",
+    "send": "Send",
+    "collapse": "Collapse panel",
+    "expand": "Open agent panel",
+    "mockResponse": "This is a basic UI demo. Agent runtime and deterministic scheduling engine are in integration.",
+    "proposal": {
+      "suggestedTime": "Suggested Time",
+      "timeValue": "Wednesday, Sep 9 · 15:00 - 16:30 (90 min)",
+      "reasoning": "Reasoning",
+      "conflictCheck": "Conflict Check",
+      "noConflict": "No conflicts found",
+      "hasConflict_one": "{{count}} conflict found",
+      "hasConflict_other": "{{count}} conflicts found",
+      "reject": "Reject",
+      "approve": "Approve & Add",
+      "approvedStatus": "Updated in calendar view (SQLite sync & Agent runtime integration in progress)",
+      "rejectedStatus": "Proposal declined and removed from calendar view"
+    }
+  },
+  "demo": {
+    "initialUserPrompt": "Help me find 90 minutes on Wednesday for the team project.",
+    "initialAgentReply": "Found an open 90-minute window on Wednesday afternoon (15:00 - 16:30). Generated a schedule proposal for your review:",
+    "eventCourse1": "Intro to AI",
+    "eventPersonal": "Workout",
+    "eventCourse2": "Project Discussion",
+    "proposalTitle": "Team Project Focus Time",
+    "proposalReason": "Continuous 90-minute free window on Wednesday afternoon."
+  }
+}
