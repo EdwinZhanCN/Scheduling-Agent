@@ -1,27 +1,27 @@
 # Core Beliefs
 
-本文档记录会实质影响取舍的长期原则，不充当样式指南或待办列表。
+This document records long-term principles that materially influence tradeoffs. It is not a style guide or a task list.
 
 ## Product beliefs
 
-- Scheduling Agent 的价值来自可靠地理解、检查和解释日程，不来自未经批准的自动操作。
-- 用户在写入前必须看见可审查的变更提案；拒绝提案不应改变日历。
-- 无法满足或语义含糊的请求应被澄清或明确拒绝，不能生成看似合理但无依据的时间。
-- 课程演示默认使用合成数据，避免把私人日程发送给未经批准的外部模型。
+- Scheduling Agent's value comes from reliably understanding, checking, and explaining schedules, not from taking automated actions without approval.
+- Users must see a reviewable change proposal before any write. Rejecting a proposal must not change the calendar.
+- Requests that cannot be satisfied or are ambiguous must be clarified or explicitly rejected; do not invent plausible but unsupported times.
+- Course demonstrations use synthetic data by default to avoid sending private schedules to unapproved external models.
 
 ## Engineering beliefs
 
-- LLM 负责自然语言理解与工具编排；冲突、可用时间和硬约束由可测试的确定性代码负责。
-- SQLite 是日程事实来源，FullCalendar 是展示与交互层，Agent 对话不是持久化事实来源。
-- 浏览器、服务端、数据库和模型边界必须通过显式类型和运行时验证衔接。
-- 依赖和生成内容使用项目 CLI 维护，锁文件与生成器保持可复现。
+- The LLM handles natural language understanding and tool orchestration; conflicts, availability, and hard constraints belong to testable, deterministic code.
+- SQLite is the source of schedule facts, FullCalendar is the presentation and interaction layer, and agent conversations are not a source of persisted facts.
+- Browser, server, database, and model boundaries must be connected through explicit types and runtime validation.
+- Maintain dependencies and generated content through project CLIs so lockfiles and generators remain reproducible.
 
 ## Non-goals
 
-- 初始课程范围不包含多用户认证、外部日历同步、通知、Premium resource timeline 或复杂重复事件。
-- 初始范围不训练模型，也不为排程引入向量数据库或 RAG。
-- Agent 不拥有直接提交日程变更的工具。
+- The initial course scope excludes multi-user authentication, external calendar synchronization, notifications, Premium resource timelines, and complex recurring events.
+- The initial scope does not include model training or introduce a vector database or RAG for scheduling.
+- The agent has no tools that directly commit schedule changes.
 
 ## Applying these beliefs
 
-当修改与上述原则冲突时，应明确记录取舍。如果原则本身改变，应更新本文档，并在 `.agents/decisions/` 中记录与项目耦合的理由。
+When a change conflicts with these principles, record the tradeoff explicitly. If a principle itself changes, update this document and record the project-specific rationale in `.agents/decisions/`.
