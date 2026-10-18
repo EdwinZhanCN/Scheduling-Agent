@@ -56,6 +56,12 @@ The first capture attempt exposed a UI race: a response could clear text typed f
 
 `pnpm verify` passes with **91/91 tests**, lint, types, formatting and production compilation. Log: `artifacts/presentation-verify.log`. See [the four-minute runbook](presentation-demo.md) for the exact prompts, reset procedure, archived-data assumptions and outdated statements in the earlier A2 slides.
 
+## Pre-PR credential audit
+
+The configured credential and common encodings were checked against every Git object reachable from all local refs, including intermediate commits, the publishable working tree, production client/server output and local test artifacts (including ZIP entries). Common API-token and private-key patterns were also checked. No matches were found. The browser build contains no API-key variable, provider endpoint, Authorization header or SQLite package reference. The provider reads credentials only at runtime on the server and returns sanitized error codes.
+
+`.env.local` has mode `600`, is ignored and has never appeared in reachable Git history; `.env.example` has an empty API-key value. The ignore rules now cover all `.env.*` variants except that sample. Databases, screenshots and test traces remain local. Sanitized audit results are retained in `artifacts/pr-secret-audit.json`; the full pre-PR verification passed all 91 tests plus formatting, lint, types and production compilation (`artifacts/pr-verify.log`). This is a check of the reviewed repository and artifacts, not a claim about unrelated copies or conversations.
+
 ## Limits
 
 These are constructed, author-side functional checks, not an independent human evaluation or statistical reliability estimate. DeepSeek's model alias is not a pinned upstream revision. The 30-case deterministic grid is not the previously proposed 30-scenario/two-paraphrase held-out LLM study. General natural-language completeness and task summaries/tags still require review. Cross-device deployment, external calendars, multi-user access, recurring events, local-model/edge operation, training and distillation have not been implemented or validated.

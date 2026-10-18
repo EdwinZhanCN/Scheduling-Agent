@@ -34,7 +34,7 @@ Configuration:
 | `DEEPSEEK_MODEL`     | `deepseek-flash`                          |
 | `SCHEDULING_DB_PATH` | `data/scheduling.sqlite`                  |
 
-Only server code reads these values. Do not use a `VITE_` prefix for credentials. Secrets, databases and local test artifacts are ignored by Git. The provider calls the [official DeepSeek endpoint](https://api-docs.deepseek.com/), uses JSON mode, validates the response and reports failures without fabricated fallback replies.
+Only server code reads these values. Do not use a `VITE_` prefix for credentials. All `.env.*` variants are ignored except the credential-free `.env.example`; databases and local test artifacts are also ignored by Git. The provider calls the [official DeepSeek endpoint](https://api-docs.deepseek.com/), uses JSON mode, validates the response and reports failures without fabricated fallback replies.
 
 Set your timezone and availability under **Preferences & availability**, then try:
 
