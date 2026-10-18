@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import type { Dispatch, SetStateAction } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from './ui/button'
 import { Textarea } from './ui/textarea'
@@ -170,7 +171,7 @@ export function AgentPanel({
   clearTask: () => void
   prompt: { text: string; sequence: number } | null
   draft: string
-  setDraft: (value: string) => void
+  setDraft: Dispatch<SetStateAction<string>>
   onPromptApplied: () => void
 }) {
   const { t } = useTranslation()
@@ -194,8 +195,13 @@ export function AgentPanel({
     }
   }, [prompt, setDraft, onPromptApplied])
   async function submit() {
-    if (draft.trim() && !busy && (await onSend(draft.trim(), continueContext)))
-      setDraft('')
+    const submitted = draft
+    if (
+      submitted.trim() &&
+      !busy &&
+      (await onSend(submitted.trim(), continueContext))
+    )
+      setDraft((current) => (current === submitted ? '' : current))
   }
   return (
     <aside
