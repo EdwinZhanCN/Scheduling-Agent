@@ -40,7 +40,7 @@ Set your timezone and availability under **Preferences & availability**, then tr
 
 > Schedule 45 minutes of study tomorrow, not before 14:00 and finish by 17:00.
 
-Review the resolved date, time and constraints before clicking **Approve & save**. If the agent asks for clarification, a follow-up includes the prior request by default; uncheck **Include previous clarification** to start a different request. Click an event or use the saved-event list to prepare a move/delete request.
+Review the resolved date, time and constraints before clicking **Approve & save**. If the agent asks for clarification, a follow-up includes the prior request by default. Explicitly revised fields replace their previous values while unchanged constraints remain in force, including after a restart. Uncheck **Include previous clarification** to start a different request. Click an event or use the saved-event list to prepare a move/delete request.
 
 ## Validation
 
@@ -59,6 +59,16 @@ pnpm exec playwright test
 ```
 
 Use a fresh test database for each full browser run. It verifies task analysis, preference replacement, reject/approve, move/delete, reload persistence, the deadline regression and the mobile drawer.
+
+For the archived Fall 2026 course scenarios:
+
+```bash
+pnpm exec tsx scripts/fall-scenario-acceptance.ts
+pnpm build
+pnpm exec playwright test --config playwright.fall.config.ts
+```
+
+These commands use real API calls. The service replay creates separate dated databases; the browser test owns a production preview on port 3011, restarts that process and opens three browser contexts. It refuses an occupied test port. Source dates, selected course facts and synthetic assumptions are documented in the [fixed scenario protocol](docs/fall-scenarios.md). This replay is not an LMS/calendar import or submission feature. See the [commit rounds](docs/commit-rounds.md) for the restructuring and subsequent test-driven fix.
 
 ## Boundaries
 

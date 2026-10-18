@@ -2,6 +2,7 @@ import { defineConfig } from '@playwright/test'
 
 export default defineConfig({
   testDir: './e2e',
+  testMatch: 'workspace.spec.ts',
   workers: 1,
   timeout: 180000,
   expect: { timeout: 60000 },

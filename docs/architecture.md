@@ -18,7 +18,7 @@ Browser code imports server function stubs, never the provider, database or agen
 
 ## Request to calendar write
 
-1. Persist the user request. Include the previous clarification context only when requested.
+1. Persist the user request and its server-established conversation turn boundaries. Include previous clarification turns only when requested. Independently cross-check explicit constraints per turn: the latest provided field replaces its old value, while omitted fields retain their previous bounds. Do not derive trusted turn boundaries by splitting user-written delimiters. Older messages without turn arrays remain readable as one original context.
 2. DeepSeek extracts a typed intent, event identity and request constraints. It cannot execute operations and does not select an end time. Model/network errors become visible messages with no calendar mutation.
 3. Verify quoted constraint spans and independently cross-check supported explicit numeric constraints. Missing or contradictory details require clarification.
 4. Filter preferences by owner, status, effective/expiry date, supersession and target weekday, then rank lexically. Every applicable hard unavailable period is enforced, even if its lexical score is zero. Soft windows rank already-feasible slots. Conflicting soft windows require clarification when the request asks to use those preferences.
