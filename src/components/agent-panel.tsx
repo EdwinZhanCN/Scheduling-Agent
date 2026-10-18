@@ -1,297 +1,348 @@
-import { useState } from 'react'
-import type { FormEvent } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ArrowDown } from 'lucide-react'
-import { MessageScroller } from '@shadcn/react/message-scroller'
+import { Button } from './ui/button'
+import { Textarea } from './ui/textarea'
+import type { Evidence, Proposal, Snapshot } from '../domain/contracts'
 
-import { Badge } from '#/components/ui/badge'
-import { Button } from '#/components/ui/button'
-import { Textarea } from '#/components/ui/textarea'
-import type { ProposalStatus, ScheduleProposal } from '#/lib/demo-schedule'
-
-type AgentPanelProps = {
-  proposal: ScheduleProposal
-  status: ProposalStatus
-  onApprove: () => void
-  onReject: () => void
-}
-
-type DemoMessage = {
-  id: string
-  role: 'user' | 'assistant'
-  contentKey?: string
-  content?: string
-}
-
-const initialMessages: DemoMessage[] = [
-  {
-    id: 'demo-user-request',
-    role: 'user',
-    contentKey: 'demo.initialUserPrompt',
-  },
-  {
-    id: 'demo-assistant-answer',
-    role: 'assistant',
-    contentKey: 'demo.initialAgentReply',
-  },
-]
-
-function ProposalReviewCard({
-  proposal,
-  status,
-  onApprove,
-  onReject,
-}: AgentPanelProps) {
+export function EvidenceList({
+  supporting,
+  excluded,
+}: {
+  supporting: Evidence[]
+  excluded: Evidence[]
+}) {
   const { t } = useTranslation()
-
   return (
-    <div
-      className="mt-2.5 rounded-lg border border-border bg-card p-3.5 text-xs text-card-foreground shadow-none"
-      aria-label={t('sidebar.pendingProposals')}
+    <details className="mt-3 text-xs text-muted-foreground">
+      <summary className="cursor-pointer">
+        {t('app.supporting')} ({supporting.length}) · {t('app.excluded')} (
+        {excluded.length})
+      </summary>
+      {!supporting.length && <p className="mt-2">{t('app.noSources')}</p>}
+      {[...supporting, ...excluded].map((source) => (
+        <div key={source.id} className="mt-2 border-l-2 border-border pl-2">
+          <p>{source.text}</p>
+          <p>
+            {t(`reasons.${source.reason}`)} · {source.id.slice(0, 8)}
+          </p>
+        </div>
+      ))}
+    </details>
+  )
+}
+
+function ProposalCard({
+  proposal: p,
+  state,
+  busy,
+  onResolve,
+}: {
+  proposal: Proposal
+  state: Snapshot
+  busy: boolean
+  onResolve: (id: string, decision: 'approve' | 'reject') => Promise<boolean>
+}) {
+  const { t } = useTranslation()
+  const format = (value: string) =>
+    new Intl.DateTimeFormat('en-US', {
+      timeZone: p.timezone,
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).format(new Date(value))
+  const before =
+    p.before ||
+    (p.status === 'pending'
+      ? state.events.find((event) => event.id === p.eventId)
+      : null)
+  return (
+    <article
+      data-testid="proposal"
+      data-status={p.status}
+      className="mt-3 rounded-xl border border-border bg-card p-3.5 shadow-sm"
     >
       <div className="flex items-center justify-between gap-2">
-        <span className="font-semibold text-foreground text-xs">
-          {proposal.title}
+        <strong>{t(`app.${p.operation}`)}</strong>
+        <span
+          className={`rounded-full px-2 py-1 text-[10px] ${p.status === 'pending' ? 'bg-amber-100 text-amber-900' : 'bg-muted'}`}
+        >
+          {t(`app.${p.status}`)}
         </span>
-        {status === 'pending' && (
-          <Badge variant="warning" className="text-[10px] font-medium">
-            {t('topbar.pending')}
-          </Badge>
-        )}
-        {status === 'approved' && (
-          <Badge variant="success" className="text-[10px] font-medium">
-            {t('agent.ready')}
-          </Badge>
-        )}
-        {status === 'rejected' && (
-          <Badge variant="secondary" className="text-[10px] font-medium">
-            {t('agent.completed')}
-          </Badge>
-        )}
       </div>
-
-      <div className="mt-2.5 space-y-1.5 text-muted-foreground">
-        <div className="flex justify-between">
-          <span>{t('agent.proposal.suggestedTime')}</span>
-          <span className="font-medium text-foreground">
-            {t('agent.proposal.timeValue')}
-          </span>
-        </div>
-        <div className="flex justify-between">
-          <span>{t('agent.proposal.reasoning')}</span>
-          <span className="text-foreground/90">{proposal.reasoning}</span>
-        </div>
-        <div className="flex justify-between">
-          <span>{t('agent.proposal.conflictCheck')}</span>
-          <span className="font-medium text-emerald-600 dark:text-emerald-400">
-            {proposal.conflicts.length === 0
-              ? t('agent.proposal.noConflict')
-              : t('agent.proposal.hasConflict', {
-                  count: proposal.conflicts.length,
-                })}
-          </span>
-        </div>
-      </div>
-
-      {status === 'pending' ? (
-        <div className="mt-3.5 flex gap-2 border-t border-border/60 pt-3">
-          <Button
-            variant="outline"
-            size="sm"
-            className="flex-1 h-7 text-xs font-normal"
-            type="button"
-            onClick={onReject}
-          >
-            {t('agent.proposal.reject')}
-          </Button>
-          <Button
-            variant="default"
-            size="sm"
-            className="flex-1 h-7 text-xs font-medium"
-            type="button"
-            onClick={onApprove}
-          >
-            {t('agent.proposal.approve')}
-          </Button>
-        </div>
-      ) : (
-        <div className="mt-3 border-t border-border/60 pt-2 text-[11px] text-muted-foreground">
-          {status === 'approved'
-            ? t('agent.proposal.approvedStatus')
-            : t('agent.proposal.rejectedStatus')}
+      <h3 className="mt-2 text-sm font-semibold">{p.title}</h3>
+      {before && p.operation === 'move' && (
+        <p className="mt-2 text-muted-foreground">
+          {t('app.before')}: {format(before.start)} – {format(before.end)}
+        </p>
+      )}
+      <p className="mt-2 font-medium">
+        {p.operation === 'delete' ? t('app.target') : t('app.after')}:{' '}
+        {format(p.start)} – {format(p.end)}
+      </p>
+      <p className="mt-1 text-[11px] text-muted-foreground">{p.timezone}</p>
+      {p.constraints && (
+        <div className="mt-3 rounded-md bg-muted/50 p-2.5">
+          <strong>{t('app.constraints')}</strong>
+          <dl className="mt-2 grid grid-cols-2 gap-1.5">
+            <dt>{t('app.date')}</dt>
+            <dd>{p.constraints.date}</dd>
+            <dt>{t('app.duration')}</dt>
+            <dd>
+              {t('app.minutes', { count: p.constraints.durationMinutes })}
+            </dd>
+            {(['earliestStart', 'latestEnd', 'exactStart'] as const).map(
+              (key) =>
+                p.constraints?.[key] && (
+                  <div key={key} className="contents">
+                    <dt>
+                      {t(
+                        `app.${{ earliestStart: 'earliest', latestEnd: 'deadline', exactStart: 'exact' }[key]}`,
+                      )}
+                    </dt>
+                    <dd>{p.constraints[key]}</dd>
+                  </div>
+                ),
+            )}
+          </dl>
         </div>
       )}
-    </div>
+      <EvidenceList supporting={p.supporting} excluded={p.excluded} />
+      {p.issues.map((code) => (
+        <p key={code} role="alert" className="mt-2 text-red-700">
+          {t(`errors.${code}`)}
+        </p>
+      ))}
+      {p.status === 'pending' && (
+        <>
+          {p.operation !== 'delete' && (
+            <p className="mt-3 text-[11px] text-emerald-700">
+              {t('app.checksPassed')}
+            </p>
+          )}
+          <p className="mt-3 text-[11px] text-muted-foreground">
+            {t('app.reviewHint')}
+          </p>
+          <div className="mt-3 flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={busy}
+              onClick={() => void onResolve(p.id, 'reject')}
+            >
+              {t('app.reject')}
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              className="flex-1"
+              disabled={busy}
+              onClick={() => void onResolve(p.id, 'approve')}
+            >
+              {t('app.approve')}
+            </Button>
+          </div>
+        </>
+      )}
+    </article>
   )
 }
 
 export function AgentPanel({
-  proposal,
-  status,
-  onApprove,
-  onReject,
-}: AgentPanelProps) {
+  state,
+  busy,
+  onSend,
+  onResolve,
+  selectedTaskId,
+  clearTask,
+  prompt,
+  draft,
+  setDraft,
+  onPromptApplied,
+}: {
+  state: Snapshot
+  busy: boolean
+  onSend: (text: string, continueContext: boolean) => Promise<boolean>
+  onResolve: (id: string, decision: 'approve' | 'reject') => Promise<boolean>
+  selectedTaskId: string | null
+  clearTask: () => void
+  prompt: { text: string; sequence: number } | null
+  draft: string
+  setDraft: (value: string) => void
+  onPromptApplied: () => void
+}) {
   const { t } = useTranslation()
-  const [messages, setMessages] = useState(initialMessages)
-  const [draft, setDraft] = useState('')
-
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    const content = draft.trim()
-
-    if (!content) {
-      return
+  const [continueContext, setContinueContext] = useState(true)
+  const stream = useRef<HTMLDivElement>(null)
+  const input = useRef<HTMLTextAreaElement>(null)
+  const task = state.tasks.find((item) => item.id === selectedTaskId)
+  useEffect(() => {
+    stream.current?.scrollTo({
+      top: stream.current.scrollHeight,
+      behavior: 'auto',
+    })
+    setContinueContext(true)
+  }, [state.messages.length])
+  useEffect(() => {
+    if (prompt) {
+      setDraft(prompt.text)
+      setContinueContext(false)
+      input.current?.focus()
+      onPromptApplied()
     }
-
-    setMessages((current) => [
-      ...current,
-      { id: crypto.randomUUID(), role: 'user', content },
-      {
-        id: crypto.randomUUID(),
-        role: 'assistant',
-        content: t('agent.mockResponse'),
-      },
-    ])
-    setDraft('')
+  }, [prompt, setDraft, onPromptApplied])
+  async function submit() {
+    if (draft.trim() && !busy && (await onSend(draft.trim(), continueContext)))
+      setDraft('')
   }
-
   return (
     <aside
-      className="agent-panel flex h-full flex-col justify-between border-l border-border bg-background"
+      className="agent-panel flex h-full min-h-0 flex-col border-l border-border bg-background"
       aria-label={t('agent.title')}
     >
-      {/* Agent Panel Header */}
-      <header className="flex h-14 shrink-0 items-center justify-between border-b border-border px-4">
-        <div>
-          <h2 className="text-sm font-semibold tracking-tight text-foreground">
-            {t('agent.title')}
-          </h2>
-          <p className="text-[11px] text-muted-foreground">
-            {t('agent.subtitle')}
-          </p>
-        </div>
-        <div>
-          {status === 'pending' && (
-            <Badge variant="warning" className="text-[11px] font-normal">
-              {t('agent.pendingCount', { count: 1 })}
-            </Badge>
-          )}
-          {status === 'approved' && (
-            <Badge variant="success" className="text-[11px] font-normal">
-              {t('agent.ready')}
-            </Badge>
-          )}
-          {status === 'rejected' && (
-            <Badge variant="secondary" className="text-[11px] font-normal">
-              {t('agent.completed')}
-            </Badge>
-          )}
-        </div>
+      <header className="border-b border-border p-4">
+        <h2 className="text-sm font-semibold">{t('agent.title')}</h2>
+        <p className="mt-1 text-xs text-muted-foreground">
+          {t('agent.subtitle')}
+        </p>
       </header>
-
-      {/* Flat & Clean Message Stream */}
-      <div className="relative min-h-0 flex-1 overflow-hidden">
-        <MessageScroller.Provider autoScroll defaultScrollPosition="end">
-          <MessageScroller.Root className="relative h-full">
-            <MessageScroller.Viewport
-              className="h-full overflow-y-auto overscroll-contain p-4"
-              aria-label={t('agent.title')}
-            >
-              <MessageScroller.Content
-                className="flex flex-col gap-4 text-xs"
-                aria-busy={false}
-              >
-                {messages.map((message) => {
-                  const messageText = message.contentKey
-                    ? t(message.contentKey as never)
-                    : message.content
-
-                  return (
-                    <MessageScroller.Item
-                      key={message.id}
-                      messageId={message.id}
-                      scrollAnchor={message.role === 'user'}
-                      className={`flex flex-col ${
-                        message.role === 'user' ? 'items-end' : 'items-start'
-                      }`}
-                    >
-                      <span className="mb-1 text-[11px] text-muted-foreground">
-                        {message.role === 'user'
-                          ? t('agent.userLabel')
-                          : t('agent.agentLabel')}
-                      </span>
-
-                      {message.role === 'user' ? (
-                        <div className="max-w-[85%] rounded-lg bg-zinc-100 px-3 py-2 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">
-                          <p className="m-0 whitespace-pre-wrap leading-relaxed">
-                            {messageText}
-                          </p>
-                        </div>
-                      ) : (
-                        <div className="w-full max-w-[95%]">
-                          <p className="m-0 leading-relaxed text-foreground">
-                            {messageText}
-                          </p>
-
-                          {message.id === 'demo-assistant-answer' && (
-                            <ProposalReviewCard
-                              proposal={proposal}
-                              status={status}
-                              onApprove={onApprove}
-                              onReject={onReject}
-                            />
-                          )}
-                        </div>
-                      )}
-                    </MessageScroller.Item>
-                  )
-                })}
-              </MessageScroller.Content>
-            </MessageScroller.Viewport>
-
-            <MessageScroller.Button className="absolute right-4 bottom-3 z-10 flex items-center gap-1 rounded-full border border-border bg-background px-2.5 py-1 text-[11px] font-medium text-foreground hover:bg-accent focus:outline-none">
-              <ArrowDown className="size-3" />
-              <span>{t('agent.scrollToBottom')}</span>
-            </MessageScroller.Button>
-          </MessageScroller.Root>
-        </MessageScroller.Provider>
-      </div>
-
-      {/* Simple Clean Input Composer */}
-      <form
-        className="shrink-0 border-t border-border p-3"
-        onSubmit={handleSubmit}
+      <div
+        ref={stream}
+        aria-live="polite"
+        aria-busy={busy}
+        className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4 text-xs"
       >
-        <div className="rounded-lg border border-input bg-background focus-within:ring-1 focus-within:ring-ring">
-          <Textarea
-            id="agent-prompt"
-            value={draft}
-            placeholder={t('agent.promptPlaceholder')}
-            onChange={(event) => setDraft(event.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault()
-                if (draft.trim()) {
-                  handleSubmit(e as unknown as FormEvent<HTMLFormElement>)
-                }
-              }
-            }}
-            className="min-h-[64px] resize-none border-0 bg-transparent p-2.5 text-xs shadow-none focus-visible:ring-0"
-            rows={2}
-          />
-          <div className="flex items-center justify-between border-t border-border/40 px-2.5 py-1.5">
-            <span className="text-[11px] text-muted-foreground">
-              {t('agent.shortcutHint')}
-            </span>
-            <Button
-              type="submit"
-              size="sm"
-              disabled={!draft.trim()}
-              className="h-6.5 px-2.5 text-xs font-medium"
-            >
-              {t('agent.send')}
-            </Button>
+        {!state.messages.length && (
+          <p className="leading-relaxed text-muted-foreground">
+            {t('app.noMessages')}
+          </p>
+        )}
+        {state.messages.map((message) => (
+          <div
+            key={message.id}
+            className={
+              message.role === 'user' ? 'ml-8 rounded-xl bg-muted p-3' : 'mr-1'
+            }
+          >
+            <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              {t(
+                message.role === 'user'
+                  ? 'agent.userLabel'
+                  : 'agent.agentLabel',
+              )}
+            </p>
+            {message.text && (
+              <p className="whitespace-pre-wrap break-words leading-relaxed">
+                {message.text}
+              </p>
+            )}
+            {message.codes.map((code) => (
+              <p
+                key={code}
+                className={`mt-1 leading-relaxed ${message.kind === 'error' ? 'text-red-700' : ''}`}
+              >
+                {t(`errors.${code}`)}
+              </p>
+            ))}
+            {message.evidence && <EvidenceList {...message.evidence} />}
+            {message.proposalId &&
+              state.proposals
+                .filter((p) => p.id === message.proposalId)
+                .map((p) => (
+                  <ProposalCard
+                    key={p.id}
+                    proposal={p}
+                    state={state}
+                    busy={busy}
+                    onResolve={onResolve}
+                  />
+                ))}
           </div>
+        ))}
+        {busy && (
+          <p role="status" className="animate-pulse text-muted-foreground">
+            {t('app.busy')}
+          </p>
+        )}
+        {state.proposals
+          .filter(
+            (proposal) =>
+              proposal.status === 'pending' &&
+              !state.messages.some(
+                (message) => message.proposalId === proposal.id,
+              ),
+          )
+          .map((proposal) => (
+            <ProposalCard
+              key={proposal.id}
+              proposal={proposal}
+              state={state}
+              busy={busy}
+              onResolve={onResolve}
+            />
+          ))}
+      </div>
+      <form
+        className="space-y-2 border-t border-border p-3"
+        onSubmit={(event) => {
+          event.preventDefault()
+          void submit()
+        }}
+      >
+        {task && (
+          <div className="flex items-center justify-between rounded bg-muted p-2 text-xs">
+            <span>{t('app.selectedTask', { title: task.title })}</span>
+            <button
+              type="button"
+              onClick={clearTask}
+              aria-label={t('app.clearTask')}
+            >
+              ×
+            </button>
+          </div>
+        )}
+        {state.messages.at(-1)?.kind === 'clarify' && (
+          <label className="flex gap-2 text-xs text-muted-foreground">
+            <input
+              type="checkbox"
+              checked={continueContext}
+              onChange={(e) => setContinueContext(e.target.checked)}
+            />
+            {t('app.continueRequest')}
+          </label>
+        )}
+        <Textarea
+          ref={input}
+          aria-label={t('agent.promptPlaceholder')}
+          placeholder={t('agent.promptPlaceholder')}
+          value={draft}
+          maxLength={6000}
+          onChange={(e) => setDraft(e.target.value)}
+          className="min-h-24 resize-none text-sm"
+          onKeyDown={(event) => {
+            if (
+              event.key === 'Enter' &&
+              !event.shiftKey &&
+              !event.nativeEvent.isComposing
+            ) {
+              event.preventDefault()
+              void submit()
+            }
+          }}
+        />
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-[10px] text-muted-foreground">
+            {t('agent.shortcutHint')}
+          </span>
+          <Button
+            type="submit"
+            size="sm"
+            disabled={busy || !draft.trim() || !state.modelConfigured}
+          >
+            {t('agent.send')}
+          </Button>
         </div>
       </form>
     </aside>
