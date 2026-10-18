@@ -212,6 +212,7 @@ export type Message = {
   proposalId: string | null
   codes: string[]
   requestContext: string
+  requestTurns?: string[]
   createdAt: string
   evidence?: { supporting: Evidence[]; excluded: Evidence[] }
 }

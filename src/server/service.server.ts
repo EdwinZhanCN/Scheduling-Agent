@@ -66,9 +66,14 @@ export class SchedulingService {
         continueContext && previous?.kind === 'clarify'
           ? previous.requestContext
           : ''
-      const request =
-        (followup ? `${followup}\nFollow-up: ${text}` : text) +
+      const currentTurn =
+        text +
         (task ? `\nSelected task: ${task.title}\n${task.description}` : '')
+      const requestTurns = [
+        ...(followup ? (previous?.requestTurns ?? [followup]) : []),
+        currentTurn,
+      ]
+      const request = requestTurns.join('\nFollow-up: ')
       if (request.length > 18000) throw new DomainError('conversation_too_long')
       this.store.addMessage({
         id: randomUUID(),
@@ -78,6 +83,7 @@ export class SchedulingService {
         proposalId: null,
         codes: [],
         requestContext: request,
+        requestTurns,
         createdAt: now,
       })
       let output: Message
@@ -141,7 +147,12 @@ export class SchedulingService {
           const fresh = this.snapshot()
           if (fresh.settingsRevision !== state.settingsRevision)
             throw new DomainError('context_changed')
-          const result = plan(input, request, { ...fresh, now: this.now() })
+          const result = plan(
+            input,
+            request,
+            { ...fresh, now: this.now() },
+            requestTurns,
+          )
           if (!result.ok)
             output = {
               id: randomUUID(),
@@ -197,7 +208,7 @@ export class SchedulingService {
           createdAt: this.now(),
         }
       }
-      this.store.addMessage(output)
+      this.store.addMessage({ ...output, requestTurns })
       return this.snapshot()
     } finally {
       this.busy = false

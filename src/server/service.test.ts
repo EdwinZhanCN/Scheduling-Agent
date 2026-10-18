@@ -330,6 +330,67 @@ describe('model integration failure boundaries', () => {
     expect(seen[1]).toContain('Schedule study tomorrow')
     expect(seen[1]).toContain('45 minutes')
   })
+  it('persists trusted clarification turns across a database reopen', async () => {
+    const directory = mkdtempSync(join(tmpdir(), 'scheduling-followup-'))
+    const path = join(directory, 'test.sqlite')
+    let store = new Store(path)
+    try {
+      store.saveSettings({ ...defaultSettings, dayEnd: '21:00' })
+      store.savePreference(
+        {
+          text: 'Exam',
+          kind: 'hard',
+          days: [1],
+          startTime: '18:00',
+          endTime: '19:50',
+          effectiveFrom: date,
+          expiresOn: date,
+          supersedesId: null,
+        },
+        now,
+      )
+      const first = `Schedule reflection on ${date} for 90 minutes, not before 18:00 and finish by 20:00.`
+      const extraction = extracted({
+        durationMinutes: 90,
+        earliestStart: '18:00',
+        latestEnd: '20:00',
+        spans: {
+          date,
+          durationMinutes: '90 minutes',
+          earliestStart: '18:00',
+          latestEnd: '20:00',
+          exactStart: null,
+        },
+      })
+      const service = new SchedulingService(
+        store,
+        async () => extraction,
+        () => now,
+      )
+      expect((await service.chat(first)).messages.at(-1)?.kind).toBe('clarify')
+      store.close()
+      store = new Store(path)
+      const next = new SchedulingService(
+        store,
+        async () => ({
+          ...extraction,
+          durationMinutes: 10,
+          spans: { ...extraction.spans, durationMinutes: '10 minutes' },
+        }),
+        () => now,
+      )
+      const state = await next.chat('Change the duration to 10 minutes.')
+      expect(state.messages.at(-1)?.kind).toBe('proposal')
+      expect(state.proposals.at(-1)?.end).toBe(
+        instant(date, '20:00', defaultSettings.timezone),
+      )
+      expect(state.messages.at(-1)?.requestTurns).toHaveLength(2)
+      expect(state.events).toHaveLength(0)
+    } finally {
+      if (store.db.open) store.close()
+      rmSync(directory, { recursive: true, force: true })
+    }
+  })
   it('saves task metadata without creating a calendar event', async () => {
     const { service } = setup()
     const state = await service.createTask(

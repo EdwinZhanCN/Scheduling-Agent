@@ -135,7 +135,11 @@ export function explicitConstraints(request: string) {
   return { values, issues }
 }
 
-export function validateInterpretation(input: Interpretation, request: string) {
+export function validateInterpretation(
+  input: Interpretation,
+  request: string,
+  constraintTurns: readonly string[] = [request],
+) {
   const issues: string[] = []
   for (const key of [
     'date',
@@ -150,7 +154,17 @@ export function validateInterpretation(input: Interpretation, request: string) {
     )
       issues.push('ungrounded_constraint')
   }
-  const explicit = explicitConstraints(request)
+  // Turn boundaries come from persisted server messages, never from splitting user text.
+  // A reply replaces only the fields it explicitly supplies; other bounds still apply.
+  const explicit = {
+    values: {} as Partial<Constraints>,
+    issues: [] as string[],
+  }
+  for (const turn of constraintTurns) {
+    const parsed = explicitConstraints(turn)
+    Object.assign(explicit.values, parsed.values)
+    explicit.issues.push(...parsed.issues)
+  }
   issues.push(...explicit.issues)
   for (const key of [
     'date',
@@ -254,6 +268,7 @@ export function plan(
   input: Interpretation,
   request: string,
   context: Context,
+  constraintTurns?: readonly string[],
 ): Plan {
   if (
     input.intent === 'clarify' ||
@@ -284,7 +299,7 @@ export function plan(
         excluded: [],
       },
     }
-  const grounded = validateInterpretation(input, request)
+  const grounded = validateInterpretation(input, request, constraintTurns)
   if (grounded.length) return { ok: false, codes: grounded }
   const date =
     input.date ||
