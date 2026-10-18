@@ -6,7 +6,7 @@ This record describes a local MVP verified on macOS/arm64, Node 25.9.0, pnpm 11.
 
 | Layer                  | Actual evidence                                                                                                                                                                                                                                           |
 | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Repository checks      | `pnpm verify`: formatting, ESLint, TypeScript, 89 deterministic tests and client/server production build pass                                                                                                                                             |
+| Repository checks      | `pnpm verify`: formatting, ESLint, TypeScript, 91 deterministic tests and client/server production build pass                                                                                                                                             |
 | Deadline/duration      | S08 regression is rejected; a separate 30-case duration/deadline boundary grid passes; independent gate tests reject wrong duration and deadline violations                                                                                               |
 | Persistence/approval   | SQLite transaction tests cover draft isolation, rejection, one-time approval, competing proposals, stale target/context, expired proposals and close/reopen persistence                                                                                   |
 | Real DeepSeek          | After follow-up fix: `live-2026-10-18T21-53-36.655Z`: 21 calls, 18/18 acceptance scenarios/workflows passed                                                                                                                                               |
@@ -47,6 +47,14 @@ The original unpushed commit has been split into four equivalent review units, f
 - Original live regression suite rerun after the fix: **18/18**, 21 calls. Current deterministic suite: **89/89**, with formatting, lint, types and production build passing. Full final log: `artifacts/fall-final-verify.log`.
 
 These are real API/browser/process tests against selected archived personal-course facts, with author-driven actions and explicitly synthetic scenario variations. They are not an independent user study, live LMS verification, automatic course-data ingestion or external calendar integration. The primary workspace database was verified to remain empty; all replay writes used separate databases. The model alias and source snapshots remain subject to the limits below.
+
+## Presentation capture
+
+`scripts/presentation-demo.ts` replayed the production app with five real model calls and captured eight unedited UI screenshots in `artifacts/presentation-2026-10-18T22-14-27.506Z/`. The captured path shows task metadata, preference replacement, eligible/excluded evidence, pending versus approved calendar state, a class conflict, a duration correction after an infeasible exam-day request, and the mobile review drawer. Browser errors: zero. Screenshots were visually inspected.
+
+The first capture attempt exposed a UI race: a response could clear text typed for the next request. Commit `0b44e15` clears only the unchanged submitted draft. Two controlled asynchronous component regressions cover preserving a newly edited draft and clearing an unchanged draft. The failed capture trace remains under `artifacts/presentation-2026-10-18T22-11-34.926Z/`. The capture script now also waits for each response to complete before continuing the guided rehearsal.
+
+`pnpm verify` passes with **91/91 tests**, lint, types, formatting and production compilation. Log: `artifacts/presentation-verify.log`. See [the four-minute runbook](presentation-demo.md) for the exact prompts, reset procedure, archived-data assumptions and outdated statements in the earlier A2 slides.
 
 ## Limits
 
