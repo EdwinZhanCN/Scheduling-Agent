@@ -19,7 +19,7 @@ This document records long-term principles that materially influence tradeoffs. 
 ## Non-goals
 
 - The initial course scope excludes multi-user authentication, external calendar synchronization, notifications, Premium resource timelines, and complex recurring events.
-- The initial scope does not include model training or introduce a vector database or RAG for scheduling.
+- The initial scope excludes model training and a vector database. Versioned preference retrieval is included: eligibility is checked before lexical ranking, and all applicable hard rules are enforced regardless of relevance. See the 2026-10-18 scope decision.
 - The agent has no tools that directly commit schedule changes.
 
 ## Applying these beliefs

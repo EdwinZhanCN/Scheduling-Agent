@@ -4,6 +4,8 @@ dist
 dist-ssr
 *.local
 .env
+.env.*
+!.env.example
 .nitro
 .tanstack
 .wrangler
@@ -15,3 +17,8 @@ todos.json
 *.db-*
 *.sqlite
 *.sqlite3
+*.sqlite3-*
+*.sqlite-*
+test-results
+playwright-report
+artifacts

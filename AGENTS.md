@@ -7,13 +7,13 @@ This is the minimal entry point for coding agents working in the Scheduling Agen
 - SQLite is the ultimate source of schedule facts. The UI receives them through domain structures close to FullCalendar `EventInput`; FullCalendar runtime objects are not the persistence source.
 - The agent may only read schedules and generate change proposals. Creating, moving, or deleting events requires explicit approval before changes can be committed.
 - Hard constraints and conflict detection belong to deterministic scheduling code, not free-form model generation.
-- The repository currently provides only dependencies and tooling scaffolding; do not describe placeholder pages as implemented product capabilities.
+- The repository implements a local single-user scheduling MVP. Describe verification using `docs/validation.md`; do not equate bounded synthetic acceptance with deployment reliability.
 - **i18n follows the Extract then Fill rule**: extract all user-facing UI text into `src/i18n/locales/en.json` first, then reference it in components through `useTranslation()` / `t(...)`. Only English is currently supported.
 
 ## Repository map
 
 - `src/routes/`: TanStack Start file routes and application entry points.
-- `src/lib/`: Shared application utilities, including shadcn's `cn` utility and demo data.
+- `src/lib/`: Shared application utilities, including shadcn's `cn` utility.
 - `src/i18n/`: i18next initialization and translation resources in `locales/en.json`.
 - `src/styles.css`: Global styles for Tailwind and shadcn.
 - `components.json`: shadcn aliases and FullCalendar registry configuration.

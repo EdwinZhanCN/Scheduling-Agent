@@ -1,330 +1,454 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import FullCalendar from '@fullcalendar/react'
-import type {
-  CalendarRef,
-  DatesSetInfo,
-  EventDisplayInfo,
-  EventClickInfo,
-} from '@fullcalendar/react'
+import type { CalendarRef } from '@fullcalendar/react'
 import dayGridPlugin from '@fullcalendar/react/daygrid'
 import interactionPlugin from '@fullcalendar/react/interaction'
 import timeGridPlugin from '@fullcalendar/react/timegrid'
 import pulseThemePlugin from '@fullcalendar/react/themes/pulse'
-import { ChevronLeft, ChevronRight, Menu, PanelRight, X } from 'lucide-react'
-
-import { AgentPanel } from '#/components/agent-panel'
-import { ScheduleSidebar } from '#/components/schedule-sidebar'
-import { Button } from '#/components/ui/button'
-import { demoEvents, demoProposal, getProposalEvent } from '#/lib/demo-schedule'
-import type { ProposalStatus } from '#/lib/demo-schedule'
-
-type CalendarView = 'dayGridMonth' | 'timeGridWeek' | 'timeGridDay'
+import {
+  ChevronLeft,
+  ChevronRight,
+  PanelRight,
+  RefreshCw,
+  X,
+} from 'lucide-react'
+import { AgentPanel } from './agent-panel'
+import { ScheduleSidebar } from './schedule-sidebar'
+import type { WorkspaceTab } from './schedule-sidebar'
+import { PreferencesPanel, TasksPanel } from './workspace-forms'
+import { Button } from './ui/button'
+import type { Result, Snapshot } from '../domain/contracts'
+import { localDate, localTime } from '../domain/time'
+import {
+  archivePreference,
+  createTask,
+  getWorkspace,
+  resolveProposal,
+  savePreference,
+  saveSettings,
+  sendRequest,
+  setTaskStatus,
+} from '../server/functions'
 
 export function SchedulingWorkbench() {
   const { t } = useTranslation()
-  const calendarRef = useRef<CalendarRef>(null)
-  const [proposalStatus, setProposalStatus] =
-    useState<ProposalStatus>('pending')
-  const [calendarView, setCalendarView] = useState<CalendarView>('timeGridWeek')
-  const [calendarTitle, setCalendarTitle] = useState('September 2026')
-  const [desktopAgentOpen, setDesktopAgentOpen] = useState(true)
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
+  const calendar = useRef<CalendarRef>(null)
+  const [state, setState] = useState<Snapshot | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [tab, setTab] = useState<WorkspaceTab>('calendar')
+  const [agentOpen, setAgentOpen] = useState(true)
   const [mobileAgentOpen, setMobileAgentOpen] = useState(false)
-
-  const events = useMemo(() => {
-    const proposalEvent = getProposalEvent(demoProposal, proposalStatus)
-    return proposalEvent ? [...demoEvents, proposalEvent] : demoEvents
-  }, [proposalStatus])
-
-  const pendingCount = proposalStatus === 'pending' ? 1 : 0
-
-  function moveCalendar(direction: 'prev' | 'next') {
-    calendarRef.current?.getApi()[direction]()
-  }
-
-  function returnToDemoWeek() {
-    calendarRef.current?.getApi().gotoDate('2026-09-07')
-  }
-
-  function handleViewChange(view: CalendarView) {
-    setCalendarView(view)
-    calendarRef.current?.getApi().changeView(view)
-  }
-
-  function handleDatesSet(info: DatesSetInfo) {
-    setCalendarTitle(info.view.title)
-  }
-
-  function handleEventClick(info: EventClickInfo) {
-    if (info.event.extendedProps.proposalId) {
-      setDesktopAgentOpen(true)
-      setMobileAgentOpen(true)
+  const [smallScreen, setSmallScreen] = useState(false)
+  const [title, setTitle] = useState('')
+  const [view, setView] = useState('timeGridWeek')
+  const [taskId, setTaskId] = useState<string | null>(null)
+  const [draft, setDraft] = useState('')
+  const [prompt, setPrompt] = useState<{
+    text: string
+    sequence: number
+  } | null>(null)
+  async function run(operation: () => Promise<Result<Snapshot>>) {
+    setBusy(true)
+    setError(null)
+    try {
+      const result = await operation()
+      if (!result.ok) {
+        setError(result.code)
+        return false
+      }
+      const latest = result.value.proposals.at(-1)
+      if (latest && latest.id !== state?.proposals.at(-1)?.id)
+        calendar.current
+          ?.getApi()
+          .gotoDate(localDate(latest.start, result.value.settings.timezone))
+      setState(result.value)
+      return true
+    } catch {
+      setError('unexpected_error')
+      return false
+    } finally {
+      setBusy(false)
     }
   }
-
-  function openInbox() {
-    setDesktopAgentOpen(true)
-    setMobileAgentOpen(true)
-    setMobileSidebarOpen(false)
+  useEffect(() => {
+    let alive = true
+    void getWorkspace()
+      .then((result) => {
+        if (alive) {
+          if (result.ok) setState(result.value)
+          else setError(result.code)
+        }
+      })
+      .catch(() => {
+        if (alive) setError('unexpected_error')
+      })
+    return () => {
+      alive = false
+    }
+  }, [])
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 1023px)')
+    const update = () => setSmallScreen(media.matches)
+    update()
+    media.addEventListener('change', update)
+    return () => media.removeEventListener('change', update)
+  }, [])
+  useEffect(() => {
+    function escape(event: KeyboardEvent) {
+      if (event.key === 'Escape') setMobileAgentOpen(false)
+    }
+    window.addEventListener('keydown', escape)
+    return () => window.removeEventListener('keydown', escape)
+  }, [])
+  function openAgent() {
+    setAgentOpen(true)
+    setMobileAgentOpen(smallScreen)
   }
-
-  function toggleAgent() {
-    setDesktopAgentOpen((open) => !open)
-    setMobileAgentOpen((open) => !open)
+  function prepare(text: string) {
+    setPrompt({ text, sequence: Date.now() })
+    openAgent()
   }
-
+  if (!state)
+    return (
+      <main className="flex min-h-dvh items-center justify-center p-6">
+        <div role="status">
+          <p>{t(error ? `errors.${error}` : 'app.loading')}</p>
+          {error && (
+            <Button
+              className="mt-4"
+              onClick={() => void run(() => getWorkspace())}
+            >
+              {t('app.retry')}
+            </Button>
+          )}
+        </div>
+      </main>
+    )
+  const zone = state.settings.timezone
+  const wall = (value: string) =>
+    `${localDate(value, zone)}T${localTime(value, zone)}:00`
+  const events = [
+    ...state.events.map((e) => ({
+      id: e.id,
+      title: e.title,
+      start: wall(e.start),
+      end: wall(e.end),
+      extendedProps: { calendar: 'course' },
+    })),
+    ...state.proposals
+      .filter((p) => p.status === 'pending' && p.operation !== 'delete')
+      .map((p) => ({
+        id: p.id,
+        title: `${t('app.pending')}: ${p.title}`,
+        start: wall(p.start),
+        end: wall(p.end),
+        extendedProps: { calendar: 'proposal' },
+      })),
+  ]
+  const panel = (
+    <AgentPanel
+      state={state}
+      busy={busy}
+      selectedTaskId={taskId}
+      clearTask={() => setTaskId(null)}
+      prompt={prompt}
+      draft={draft}
+      setDraft={setDraft}
+      onPromptApplied={() => setPrompt(null)}
+      onSend={(text, continueContext) =>
+        run(() => sendRequest({ data: { text, taskId, continueContext } }))
+      }
+      onResolve={(id, decision) =>
+        run(() => resolveProposal({ data: { id, decision } }))
+      }
+    />
+  )
   return (
-    <main className="flex h-dvh min-h-screen flex-col overflow-hidden bg-background text-foreground">
-      {/* Top Navbar */}
-      <header className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-card px-3 sm:px-4">
-        {/* Left Navigation */}
-        <nav
-          className="flex items-center gap-1.5 sm:gap-2"
-          aria-label={t('sidebar.calendarView')}
-        >
-          {/* Mobile/Tablet Menu Button to Open Sidebar */}
+    <main className="flex h-dvh min-h-0 flex-col overflow-hidden bg-background text-foreground">
+      <header className="flex min-h-14 shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border px-3 py-2">
+        <div className="flex min-w-0 items-center gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() =>
+              calendar.current
+                ?.getApi()
+                .gotoDate(localDate(new Date().toISOString(), zone))
+            }
+          >
+            {t('app.now')}
+          </Button>
           <Button
             variant="ghost"
             size="icon"
-            className="size-8 lg:hidden"
-            type="button"
-            aria-label={t('topbar.menu')}
-            onClick={() => setMobileSidebarOpen(true)}
+            aria-label={t('topbar.prev')}
+            onClick={() => calendar.current?.getApi().prev()}
           >
-            <Menu className="size-4" />
+            <ChevronLeft className="size-4" />
           </Button>
-
           <Button
-            variant="outline"
-            size="sm"
-            className="hidden h-8 rounded-md px-2.5 text-xs font-medium sm:inline-flex"
-            type="button"
-            onClick={returnToDemoWeek}
-          >
-            {t('topbar.demoWeek')}
-          </Button>
-
-          <div className="flex items-center gap-0.5">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-8 rounded-md"
-              type="button"
-              aria-label={t('topbar.prev')}
-              onClick={() => moveCalendar('prev')}
-            >
-              <ChevronLeft className="size-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-8 rounded-md"
-              type="button"
-              aria-label={t('topbar.next')}
-              onClick={() => moveCalendar('next')}
-            >
-              <ChevronRight className="size-4" />
-            </Button>
-          </div>
-
-          <strong className="truncate px-1 text-sm font-semibold tracking-tight text-foreground sm:px-2 sm:text-base">
-            {calendarTitle}
-          </strong>
-        </nav>
-
-        {/* Right Action Controls & View Switcher */}
-        <div className="flex items-center gap-1.5 sm:gap-2">
-          {/* Segmented View Switcher */}
-          <div className="flex items-center rounded-lg border border-border bg-muted/50 p-0.5">
-            <button
-              type="button"
-              onClick={() => handleViewChange('dayGridMonth')}
-              className={`rounded-md px-2 py-1 text-xs font-medium transition-all sm:px-2.5 ${
-                calendarView === 'dayGridMonth'
-                  ? 'bg-background text-foreground'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              {t('topbar.monthView')}
-            </button>
-            <button
-              type="button"
-              onClick={() => handleViewChange('timeGridWeek')}
-              className={`rounded-md px-2 py-1 text-xs font-medium transition-all sm:px-2.5 ${
-                calendarView === 'timeGridWeek'
-                  ? 'bg-background text-foreground'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              {t('topbar.weekView')}
-            </button>
-            <button
-              type="button"
-              onClick={() => handleViewChange('timeGridDay')}
-              className={`rounded-md px-2 py-1 text-xs font-medium transition-all sm:px-2.5 ${
-                calendarView === 'timeGridDay'
-                  ? 'bg-background text-foreground'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              {t('topbar.dayView')}
-            </button>
-          </div>
-
-          {/* Toggle Agent Dock Button */}
-          <Button
-            variant={
-              desktopAgentOpen || mobileAgentOpen ? 'secondary' : 'outline'
-            }
+            variant="ghost"
             size="icon"
-            className="size-8"
-            type="button"
+            aria-label={t('topbar.next')}
+            onClick={() => calendar.current?.getApi().next()}
+          >
+            <ChevronRight className="size-4" />
+          </Button>
+          <strong className="text-sm">
+            {tab === 'calendar' ? title : t(`app.${tab}`)}
+          </strong>
+        </div>
+        <div className="flex items-center gap-1">
+          {tab === 'calendar' &&
+            (['dayGridMonth', 'timeGridWeek', 'timeGridDay'] as const).map(
+              (key, i) => (
+                <Button
+                  key={key}
+                  size="sm"
+                  variant={view === key ? 'secondary' : 'ghost'}
+                  onClick={() => {
+                    setView(key)
+                    calendar.current?.getApi().changeView(key)
+                  }}
+                >
+                  {t(`topbar.${['monthView', 'weekView', 'dayView'][i]}`)}
+                </Button>
+              ),
+            )}
+          <Button
+            size="icon"
+            variant="ghost"
+            disabled={busy}
+            aria-label={t('app.refresh')}
+            onClick={() => void run(() => getWorkspace())}
+          >
+            <RefreshCw className="size-4" />
+          </Button>
+          <Button
+            size="icon"
+            variant="outline"
             aria-label={t('topbar.toggleAgent')}
-            onClick={toggleAgent}
+            onClick={() => {
+              if (smallScreen) setMobileAgentOpen(!mobileAgentOpen)
+              else setAgentOpen(!agentOpen)
+            }}
           >
             <PanelRight className="size-4" />
           </Button>
         </div>
       </header>
-
-      {/* Main Workspace Layout */}
-      <div className="relative flex min-h-0 flex-1 overflow-hidden">
-        {/* Desktop Sidebar (visible on lg: and up) */}
-        <div className="hidden h-full w-60 shrink-0 lg:block">
+      {error && (
+        <div
+          role="alert"
+          className="border-b border-red-200 bg-red-50 px-4 py-2 text-sm text-red-800"
+        >
+          {t(`errors.${error}`)}
+        </div>
+      )}
+      <nav className="flex shrink-0 gap-1 overflow-x-auto border-b p-2 lg:hidden">
+        {(['calendar', 'tasks', 'preferences'] as const).map((key) => (
+          <Button
+            key={key}
+            size="sm"
+            variant={tab === key ? 'secondary' : 'ghost'}
+            onClick={() => setTab(key)}
+          >
+            {t(`app.${key}`)}
+          </Button>
+        ))}
+        <Button size="sm" variant="outline" onClick={openAgent}>
+          {t('app.openAgent')}
+        </Button>
+      </nav>
+      <div className="flex min-h-0 flex-1">
+        <div className="hidden w-52 shrink-0 lg:block">
           <ScheduleSidebar
-            pendingCount={pendingCount}
-            onOpenInbox={openInbox}
+            tab={tab}
+            setTab={setTab}
+            pendingCount={
+              state.proposals.filter((p) => p.status === 'pending').length
+            }
+            openAgent={openAgent}
+            modelConfigured={state.modelConfigured}
           />
         </div>
-
-        {/* Center Calendar Panel */}
-        <section
-          className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-background p-2.5 sm:p-4"
-          aria-label={t('sidebar.calendarView')}
-        >
-          <div className="calendar-frame min-h-0 flex-1 overflow-hidden">
-            <FullCalendar
-              ref={calendarRef}
-              plugins={[
-                dayGridPlugin,
-                timeGridPlugin,
-                interactionPlugin,
-                pulseThemePlugin,
-              ]}
-              initialView="timeGridWeek"
-              initialDate="2026-09-07"
-              headerToolbar={false}
-              weekends={false}
-              allDaySlot={false}
-              slotMinTime="08:00:00"
-              slotMaxTime="20:00:00"
-              slotDuration="00:30:00"
-              dayHeaderFormat={{ weekday: 'short', day: 'numeric' }}
-              eventTimeFormat={{
-                hour: '2-digit',
-                minute: '2-digit',
-                hour12: false,
-              }}
-              nowIndicator={false}
-              editable={false}
-              selectable={false}
-              expandRows
-              height="100%"
-              events={events}
-              datesSet={handleDatesSet}
-              eventClick={handleEventClick}
-              eventClass={(info: EventDisplayInfo) => {
-                const calendar = info.event.extendedProps.calendar
-                return [
-                  `schedule-event-${String(calendar)}`,
-                  info.event.extendedProps.proposalId ? 'is-proposal' : '',
-                ]
-                  .filter(Boolean)
-                  .join(' ')
-              }}
-            />
-          </div>
-        </section>
-
-        {/* Desktop Right Agent Dock (collapsible, visible on lg: and up) */}
-        {desktopAgentOpen && (
-          <div className="hidden h-full w-84 shrink-0 lg:block xl:w-96">
-            <AgentPanel
-              proposal={demoProposal}
-              status={proposalStatus}
-              onApprove={() => setProposalStatus('approved')}
-              onReject={() => setProposalStatus('rejected')}
-            />
-          </div>
-        )}
-
-        {/* Tablet & Mobile Slide-over Drawer for Agent Panel (< lg) */}
-        {mobileAgentOpen && (
-          <div className="fixed inset-0 z-50 flex justify-end lg:hidden">
-            {/* Backdrop */}
-            <div
-              className="fixed inset-0 bg-black/40 backdrop-blur-xs transition-opacity animate-in fade-in-0"
-              onClick={() => setMobileAgentOpen(false)}
-            />
-            {/* Slide-in Sheet */}
-            <div className="relative z-10 flex h-full w-full max-w-sm flex-col bg-background shadow-2xl animate-in slide-in-from-right duration-200 sm:max-w-md">
-              <div className="absolute top-3.5 right-3.5 z-20">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="size-7"
-                  type="button"
-                  aria-label={t('topbar.close')}
-                  onClick={() => setMobileAgentOpen(false)}
-                >
-                  <X className="size-4" />
-                </Button>
-              </div>
-              <div className="h-full">
-                <AgentPanel
-                  proposal={demoProposal}
-                  status={proposalStatus}
-                  onApprove={() => setProposalStatus('approved')}
-                  onReject={() => setProposalStatus('rejected')}
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto">
+          {tab === 'calendar' && (
+            <>
+              <p className="shrink-0 px-4 pt-3 text-xs text-muted-foreground">
+                {t('app.timezone', { zone })}
+              </p>
+              <div className="calendar-frame m-3 min-h-72 flex-1 overflow-hidden">
+                <FullCalendar
+                  ref={calendar}
+                  plugins={[
+                    dayGridPlugin,
+                    timeGridPlugin,
+                    interactionPlugin,
+                    pulseThemePlugin,
+                  ]}
+                  initialView={view}
+                  initialDate={localDate(new Date().toISOString(), zone)}
+                  headerToolbar={false}
+                  weekends
+                  allDaySlot={false}
+                  slotMinTime="00:00:00"
+                  slotMaxTime="24:00:00"
+                  scrollTime="08:00:00"
+                  slotDuration="00:30:00"
+                  eventTimeFormat={{
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: false,
+                  }}
+                  nowIndicator={false}
+                  editable={false}
+                  selectable={false}
+                  height="100%"
+                  events={events}
+                  datesSet={(info) => setTitle(info.view.title)}
+                  eventClick={(info) => {
+                    const event = state.events.find(
+                      (e) => e.id === info.event.id,
+                    )
+                    if (event)
+                      prepare(
+                        t('app.movePrompt', {
+                          id: event.id,
+                          title: event.title,
+                        }),
+                      )
+                    else openAgent()
+                  }}
+                  eventClass={(info) =>
+                    [
+                      `schedule-event-${String(info.event.extendedProps.calendar)}`,
+                      info.event.extendedProps.calendar === 'proposal'
+                        ? 'is-proposal'
+                        : '',
+                    ]
+                      .filter(Boolean)
+                      .join(' ')
+                  }
                 />
               </div>
-            </div>
-          </div>
-        )}
-
-        {/* Mobile & Tablet Slide-over Drawer for Sidebar (< lg) */}
-        {mobileSidebarOpen && (
-          <div className="fixed inset-0 z-50 flex justify-start lg:hidden">
-            {/* Backdrop */}
-            <div
-              className="fixed inset-0 bg-black/40 backdrop-blur-xs transition-opacity animate-in fade-in-0"
-              onClick={() => setMobileSidebarOpen(false)}
+              <details
+                className="max-h-48 shrink-0 overflow-auto border-t p-3 text-xs"
+                open={!state.events.length}
+              >
+                <summary className="cursor-pointer font-medium">
+                  {t('app.savedEvents')} ({state.events.length})
+                </summary>
+                {!state.events.length && (
+                  <p className="mt-2 text-muted-foreground">{t('app.empty')}</p>
+                )}
+                {state.events.map((event) => (
+                  <div
+                    key={event.id}
+                    data-testid="saved-event"
+                    className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded bg-muted/40 p-2"
+                  >
+                    <div>
+                      <strong>{event.title}</strong>
+                      <p>
+                        {localDate(event.start, zone)} ·{' '}
+                        {localTime(event.start, zone)}–
+                        {localTime(event.end, zone)}
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() =>
+                          prepare(
+                            t('app.movePrompt', {
+                              id: event.id,
+                              title: event.title,
+                            }),
+                          )
+                        }
+                      >
+                        {t('app.move')}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() =>
+                          prepare(
+                            t('app.deletePrompt', {
+                              id: event.id,
+                              title: event.title,
+                            }),
+                          )
+                        }
+                      >
+                        {t('app.delete')}
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </details>
+            </>
+          )}
+          {tab === 'tasks' && (
+            <TasksPanel
+              state={state}
+              busy={busy}
+              onCreate={(data) => run(() => createTask({ data }))}
+              onStatus={(id, status) =>
+                run(() => setTaskStatus({ data: { id, status } }))
+              }
+              onSchedule={(id) => {
+                setTaskId(id)
+                openAgent()
+              }}
             />
-            {/* Slide-in Sheet */}
-            <div className="relative z-10 flex h-full w-72 max-w-[80vw] flex-col bg-background shadow-2xl animate-in slide-in-from-left duration-200">
-              <div className="absolute top-3 right-3 z-20">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="size-7"
-                  type="button"
-                  aria-label={t('topbar.close')}
-                  onClick={() => setMobileSidebarOpen(false)}
-                >
-                  <X className="size-4" />
-                </Button>
-              </div>
-              <div className="h-full">
-                <ScheduleSidebar
-                  pendingCount={pendingCount}
-                  onOpenInbox={openInbox}
-                />
-              </div>
-            </div>
+          )}
+          {tab === 'preferences' && (
+            <PreferencesPanel
+              state={state}
+              busy={busy}
+              onSettings={(data) => run(() => saveSettings({ data }))}
+              onPreference={(data) => run(() => savePreference({ data }))}
+              onArchive={(id) => run(() => archivePreference({ data: { id } }))}
+            />
+          )}
+        </div>
+        {agentOpen && !smallScreen && (
+          <div className="hidden h-full w-96 shrink-0 lg:block xl:w-[420px]">
+            {panel}
           </div>
         )}
       </div>
+      {mobileAgentOpen && smallScreen && (
+        <div className="fixed inset-0 z-50 flex justify-end lg:hidden">
+          <button
+            className="absolute inset-0 bg-black/40"
+            aria-label={t('app.closeAgent')}
+            onClick={() => setMobileAgentOpen(false)}
+          />
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={t('agent.title')}
+            className="relative h-full w-full max-w-md bg-background pt-10"
+          >
+            <Button
+              className="absolute right-2 top-1"
+              size="icon"
+              variant="ghost"
+              aria-label={t('app.closeAgent')}
+              onClick={() => setMobileAgentOpen(false)}
+            >
+              <X className="size-4" />
+            </Button>
+            {panel}
+          </div>
+        </div>
+      )}
     </main>
   )
 }
