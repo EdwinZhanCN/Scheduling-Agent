@@ -31,9 +31,32 @@ The final real-API fixtures are synthetic. The 18-case report covers feasible re
 - `artifacts/task-labels-*/`: supplemental task-label protocols and reports, including the failed run.
 - `artifacts/browser-final-report.json`: Playwright result; `artifacts/browser-*.png`: browser screenshots.
 - `artifacts/production-smoke.json`: compiled-runtime persistence check.
-- `scripts/live-acceptance.ts`, `scripts/task-label-acceptance.ts`, `e2e/workspace.spec.ts`: executable checks. Browser tests require a separate empty database as described in the README.
+- `scripts/live-acceptance.ts`, `scripts/task-label-acceptance.ts`, `e2e/workspace.spec.ts`: executable checks.
 
 Artifacts are intentionally local and ignored by Git; the check code and this concise result record are versioned. Historical course experiment files outside this repository remain unchanged.
+
+### Run the acceptance checks
+
+The service acceptance suite calls DeepSeek with constructed fixtures. It records the protocol, responses, and report under `artifacts/live-*` and exits with an error if a case fails.
+
+```bash
+pnpm exec tsx scripts/live-acceptance.ts
+```
+
+For browser acceptance, install Chrome and use a fresh database path for each run. Start the test server in one terminal and run Playwright in another.
+
+```bash
+SCHEDULING_DB_PATH=artifacts/browser-test.sqlite pnpm exec vite dev --port 3001
+pnpm exec playwright test
+```
+
+Run the [archived Fall 2026 scenario replay](fall-scenarios.md) with the following commands. The service replay creates separate dated databases. The browser suite starts and restarts its own production preview and requires port 3011 to be free.
+
+```bash
+pnpm exec tsx scripts/fall-scenario-acceptance.ts
+pnpm build
+pnpm exec playwright test --config playwright.fall.config.ts
+```
 
 ## Fall course replay and commit rounds
 
