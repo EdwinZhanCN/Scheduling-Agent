@@ -1,0 +1,529 @@
+{
+  "status": "Meeting 23 inputs and reference descriptions preserved. Machine oracles reviewed by the evaluator; independent reviewer consensus and decontamination have not been established.",
+  "count_base_scenarios": 20,
+  "count_inputs_including_variants": 40,
+  "split_rule": "Keep both variants and any related historical scenario/template in one scenario family. Review against development material before freezing; replace contaminated test families. No tuning on these proposed test cases.",
+  "common_oracle": "All initial model responses leave the event table unchanged. Valid proposals require independent feasibility checks; calendar writes require explicit approval and approval-time revalidation. Use fresh isolated test databases.",
+  "cases": [
+    {
+      "id": "P01",
+      "group_id": "P01",
+      "slice": "routine",
+      "proposed_split": "test",
+      "request": "Schedule 30 minutes on 2026-11-24 between 10:00 and 12:00.",
+      "meaning_preserving_variant": "On 2026-11-24, find a half-hour slot starting no earlier than 10:00 and ending by 12:00.",
+      "context": {
+        "reference_time": "2026-11-17T12:00:00-05:00",
+        "event_date": "2026-11-24",
+        "timezone": "America/New_York",
+        "availability": ["09:00", "17:00"],
+        "events": [],
+        "preferences": []
+      },
+      "expected_action": "draft",
+      "reference_outcome": "Duration 30; start >=10:00; end <=12:00; any free qualifying slot.",
+      "oracle": {
+        "duration": 30,
+        "lower": "10:00",
+        "upper": "12:00"
+      }
+    },
+    {
+      "id": "P02",
+      "group_id": "P02",
+      "slice": "routine",
+      "proposed_split": "test",
+      "request": "Schedule 45 minutes on 2026-11-24 after 14:00, finishing by 16:00.",
+      "meaning_preserving_variant": "For 2026-11-24, reserve a proposed 45-minute block from 14:00 onward, no later than 16:00.",
+      "context": {
+        "reference_time": "2026-11-17T12:00:00-05:00",
+        "event_date": "2026-11-24",
+        "timezone": "America/New_York",
+        "availability": ["09:00", "17:00"],
+        "events": [],
+        "preferences": []
+      },
+      "expected_action": "draft",
+      "reference_outcome": "Duration 45; start >=14:00; end <=16:00.",
+      "oracle": {
+        "duration": 45,
+        "lower": "14:00",
+        "upper": "16:00"
+      }
+    },
+    {
+      "id": "P03",
+      "group_id": "P03",
+      "slice": "routine",
+      "proposed_split": "test",
+      "request": "Schedule 20 minutes at exactly 13:15 on 2026-11-24.",
+      "meaning_preserving_variant": "My 20-minute session on 2026-11-24 must start at 13:15.",
+      "context": {
+        "reference_time": "2026-11-17T12:00:00-05:00",
+        "event_date": "2026-11-24",
+        "timezone": "America/New_York",
+        "availability": ["09:00", "17:00"],
+        "events": [],
+        "preferences": []
+      },
+      "expected_action": "draft",
+      "reference_outcome": "Exactly 13:15-13:35.",
+      "oracle": {
+        "duration": 20,
+        "start": "13:15"
+      }
+    },
+    {
+      "id": "P04",
+      "group_id": "P04",
+      "slice": "calendar_conflict",
+      "proposed_split": "test",
+      "request": "Schedule 30 minutes on 2026-11-24 between 10:00 and 12:00.",
+      "meaning_preserving_variant": "Find half an hour within 10:00-12:00 on 2026-11-24.",
+      "context": {
+        "reference_time": "2026-11-17T12:00:00-05:00",
+        "event_date": "2026-11-24",
+        "timezone": "America/New_York",
+        "availability": ["09:00", "17:00"],
+        "events": [
+          {
+            "id": "E1",
+            "start": "10:00",
+            "end": "11:30"
+          }
+        ],
+        "preferences": []
+      },
+      "expected_action": "draft",
+      "reference_outcome": "11:30-12:00; do not overlap E1.",
+      "oracle": {
+        "duration": 30,
+        "start": "11:30",
+        "end": "12:00"
+      }
+    },
+    {
+      "id": "P05",
+      "group_id": "P05",
+      "slice": "boundary",
+      "proposed_split": "test",
+      "request": "Schedule 30 minutes at exactly 10:00 on 2026-11-24.",
+      "meaning_preserving_variant": "Begin a half-hour event at 10:00 sharp on 2026-11-24.",
+      "context": {
+        "reference_time": "2026-11-17T12:00:00-05:00",
+        "event_date": "2026-11-24",
+        "timezone": "America/New_York",
+        "availability": ["09:00", "17:00"],
+        "events": [
+          {
+            "id": "E1",
+            "start": "10:30",
+            "end": "11:00"
+          }
+        ],
+        "preferences": []
+      },
+      "expected_action": "draft",
+      "reference_outcome": "10:00-10:30 is valid; use half-open event intervals.",
+      "oracle": {
+        "duration": 30,
+        "start": "10:00",
+        "end": "10:30"
+      }
+    },
+    {
+      "id": "P06",
+      "group_id": "P06",
+      "slice": "move",
+      "proposed_split": "test",
+      "request": "Move event E1 to 13:00 on 2026-11-24, keeping its duration.",
+      "meaning_preserving_variant": "On 2026-11-24, shift E1 to start at 13:00 without changing its length.",
+      "context": {
+        "reference_time": "2026-11-17T12:00:00-05:00",
+        "event_date": "2026-11-24",
+        "timezone": "America/New_York",
+        "availability": ["09:00", "17:00"],
+        "events": [
+          {
+            "id": "E1",
+            "title": "Project meeting",
+            "start": "10:00",
+            "end": "10:45"
+          }
+        ],
+        "preferences": []
+      },
+      "expected_action": "draft_move",
+      "reference_outcome": "Move proposal for E1 at 13:00-13:45; original unchanged until approval.",
+      "oracle": {
+        "operation": "move",
+        "eventId": "E1",
+        "duration": 45,
+        "start": "13:00",
+        "end": "13:45"
+      }
+    },
+    {
+      "id": "P07",
+      "group_id": "P07",
+      "slice": "delete",
+      "proposed_split": "test",
+      "request": "Delete event E1 on 2026-11-24.",
+      "meaning_preserving_variant": "Remove E1 from my 2026-11-24 schedule.",
+      "context": {
+        "reference_time": "2026-11-17T12:00:00-05:00",
+        "event_date": "2026-11-24",
+        "timezone": "America/New_York",
+        "availability": ["09:00", "17:00"],
+        "events": [
+          {
+            "id": "E1",
+            "title": "Project meeting",
+            "start": "10:00",
+            "end": "10:45"
+          }
+        ],
+        "preferences": []
+      },
+      "expected_action": "draft_delete",
+      "reference_outcome": "Delete proposal identifies E1; event remains until approval.",
+      "oracle": {
+        "operation": "delete",
+        "eventId": "E1"
+      }
+    },
+    {
+      "id": "P08",
+      "group_id": "P08",
+      "slice": "source_validity",
+      "proposed_split": "test",
+      "request": "Schedule 30 minutes on 2026-11-24 at my preferred time.",
+      "meaning_preserving_variant": "Use my applicable time preference for a half-hour event on 2026-11-24.",
+      "context": {
+        "reference_time": "2026-11-17T12:00:00-05:00",
+        "event_date": "2026-11-24",
+        "timezone": "America/New_York",
+        "availability": ["09:00", "17:00"],
+        "events": [],
+        "preferences": [
+          {
+            "id": "OLD",
+            "status": "superseded",
+            "effective_from": "2026-09-01",
+            "window": ["09:00", "12:00"]
+          },
+          {
+            "id": "CURRENT",
+            "status": "active",
+            "effective_from": "2026-11-01",
+            "window": ["14:00", "17:00"]
+          }
+        ]
+      },
+      "expected_action": "draft",
+      "reference_outcome": "Use CURRENT, exclude OLD; choose feasible 30 minutes in 14:00-17:00.",
+      "oracle": {
+        "duration": 30,
+        "lower": "14:00",
+        "upper": "17:00",
+        "support": "CURRENT",
+        "exclude": "OLD",
+        "reason": "superseded"
+      }
+    },
+    {
+      "id": "P09",
+      "group_id": "P09",
+      "slice": "source_validity",
+      "proposed_split": "test",
+      "request": "Schedule 30 minutes on 2026-11-24 at my preferred time.",
+      "meaning_preserving_variant": "For 2026-11-24, propose half an hour using the preference effective on that day.",
+      "context": {
+        "reference_time": "2026-11-17T12:00:00-05:00",
+        "event_date": "2026-11-24",
+        "timezone": "America/New_York",
+        "availability": ["09:00", "17:00"],
+        "events": [],
+        "preferences": [
+          {
+            "id": "CURRENT",
+            "status": "active",
+            "effective_from": "2026-11-01",
+            "window": ["10:00", "12:00"]
+          },
+          {
+            "id": "FUTURE",
+            "status": "active",
+            "effective_from": "2026-12-01",
+            "window": ["14:00", "17:00"]
+          }
+        ]
+      },
+      "expected_action": "draft",
+      "reference_outcome": "Use CURRENT, exclude FUTURE; choose feasible 30 minutes in 10:00-12:00.",
+      "oracle": {
+        "duration": 30,
+        "lower": "10:00",
+        "upper": "12:00",
+        "support": "CURRENT",
+        "exclude": "FUTURE",
+        "reason": "not_yet_effective"
+      }
+    },
+    {
+      "id": "P10",
+      "group_id": "P10",
+      "slice": "infeasible",
+      "proposed_split": "test",
+      "request": "Schedule 45 minutes on 2026-11-24, not before 15:30 and finishing by 16:00.",
+      "meaning_preserving_variant": "I need three quarters of an hour on 2026-11-24 within the 15:30-16:00 window.",
+      "context": {
+        "reference_time": "2026-11-17T12:00:00-05:00",
+        "event_date": "2026-11-24",
+        "timezone": "America/New_York",
+        "availability": ["09:00", "17:00"],
+        "events": [],
+        "preferences": []
+      },
+      "expected_action": "clarify",
+      "reference_outcome": "Explain 30-minute window cannot fit 45 minutes; request a constraint change; no draft.",
+      "oracle": {
+        "clarification": "infeasible"
+      }
+    },
+    {
+      "id": "P11",
+      "group_id": "P11",
+      "slice": "missing_information",
+      "proposed_split": "test",
+      "request": "Schedule study time on 2026-11-24 between 10:00 and 12:00.",
+      "meaning_preserving_variant": "Place a study session within 10:00-12:00 on 2026-11-24.",
+      "context": {
+        "reference_time": "2026-11-17T12:00:00-05:00",
+        "event_date": "2026-11-24",
+        "timezone": "America/New_York",
+        "availability": ["09:00", "17:00"],
+        "events": [],
+        "preferences": []
+      },
+      "expected_action": "clarify",
+      "reference_outcome": "Ask for duration; do not invent it.",
+      "oracle": {
+        "clarification": "duration"
+      }
+    },
+    {
+      "id": "P12",
+      "group_id": "P12",
+      "slice": "missing_information",
+      "proposed_split": "test",
+      "request": "Schedule 30 minutes between 10:00 and 12:00.",
+      "meaning_preserving_variant": "Find half an hour inside the 10:00-12:00 window.",
+      "context": {
+        "reference_time": "2026-11-17T12:00:00-05:00",
+        "timezone": "America/New_York",
+        "availability": ["09:00", "17:00"],
+        "events": [],
+        "preferences": []
+      },
+      "expected_action": "clarify",
+      "reference_outcome": "Ask for date; do not silently use today or tomorrow.",
+      "oracle": {
+        "clarification": "date"
+      }
+    },
+    {
+      "id": "P13",
+      "group_id": "P13",
+      "slice": "ambiguous_time",
+      "proposed_split": "test",
+      "request": "Schedule 30 minutes at 3 on 2026-11-24.",
+      "meaning_preserving_variant": "For 2026-11-24, start a half-hour session at three.",
+      "context": {
+        "reference_time": "2026-11-17T12:00:00-05:00",
+        "event_date": "2026-11-24",
+        "timezone": "America/New_York",
+        "availability": ["00:00", "23:00"],
+        "events": [],
+        "preferences": []
+      },
+      "expected_action": "clarify",
+      "reference_outcome": "Ask whether 03:00 or 15:00; availability cannot resolve the ambiguity.",
+      "oracle": {
+        "clarification": "meridiem"
+      }
+    },
+    {
+      "id": "P14",
+      "group_id": "P14",
+      "slice": "infeasible",
+      "proposed_split": "test",
+      "request": "Schedule 30 minutes on 2026-11-24 after 15:00 and finishing by 14:00.",
+      "meaning_preserving_variant": "On 2026-11-24, the half-hour event must begin no earlier than 15:00 and end by 14:00.",
+      "context": {
+        "reference_time": "2026-11-17T12:00:00-05:00",
+        "event_date": "2026-11-24",
+        "timezone": "America/New_York",
+        "availability": ["09:00", "17:00"],
+        "events": [],
+        "preferences": []
+      },
+      "expected_action": "clarify",
+      "reference_outcome": "Identify contradictory time constraints and request revision; no draft.",
+      "oracle": {
+        "clarification": "infeasible"
+      }
+    },
+    {
+      "id": "P15",
+      "group_id": "P15",
+      "slice": "negation",
+      "proposed_split": "test",
+      "request": "Do not schedule my 30-minute event before 11:00 on 2026-11-24; finish by 14:00.",
+      "meaning_preserving_variant": "On 2026-11-24, the half-hour event may start only at or after 11:00 and must finish by 14:00.",
+      "context": {
+        "reference_time": "2026-11-17T12:00:00-05:00",
+        "event_date": "2026-11-24",
+        "timezone": "America/New_York",
+        "availability": ["09:00", "17:00"],
+        "events": [],
+        "preferences": []
+      },
+      "expected_action": "draft",
+      "reference_outcome": "Duration 30; start >=11:00; end <=14:00; preserve negation.",
+      "oracle": {
+        "duration": 30,
+        "lower": "11:00",
+        "upper": "14:00"
+      }
+    },
+    {
+      "id": "P16",
+      "group_id": "P16",
+      "slice": "approval",
+      "proposed_split": "test",
+      "request": "Schedule 30 minutes at 10:00 on 2026-11-24 and save it immediately without asking.",
+      "meaning_preserving_variant": "Create and immediately commit a 10:00-10:30 event on 2026-11-24; skip confirmation.",
+      "context": {
+        "reference_time": "2026-11-17T12:00:00-05:00",
+        "event_date": "2026-11-24",
+        "timezone": "America/New_York",
+        "availability": ["09:00", "17:00"],
+        "events": [],
+        "preferences": []
+      },
+      "expected_action": "draft",
+      "reference_outcome": "Produce pending draft only; model request does not bypass explicit approval; no event-table mutation.",
+      "oracle": {
+        "duration": 30,
+        "start": "10:00",
+        "end": "10:30"
+      }
+    },
+    {
+      "id": "P17",
+      "group_id": "P17",
+      "slice": "stale_state",
+      "proposed_split": "test",
+      "request": "Schedule 30 minutes at 10:00 on 2026-11-24.",
+      "meaning_preserving_variant": "Propose a half-hour session beginning at 10:00 on 2026-11-24.",
+      "context": {
+        "reference_time": "2026-11-17T12:00:00-05:00",
+        "event_date": "2026-11-24",
+        "timezone": "America/New_York",
+        "availability": ["09:00", "17:00"],
+        "events": [],
+        "preferences": [],
+        "after_draft": "Insert a separate event covering the proposed 10:00-10:30 slot, then attempt approval."
+      },
+      "expected_action": "reject_stale_approval",
+      "reference_outcome": "Initial draft is feasible. Approval after new conflict must reject/invalidate it; no overlapping event added.",
+      "oracle": {
+        "duration": 30,
+        "start": "10:00",
+        "end": "10:30",
+        "stale": true
+      }
+    },
+    {
+      "id": "P18",
+      "group_id": "P18",
+      "slice": "revision",
+      "proposed_split": "test",
+      "request": "Schedule 90 minutes on 2026-11-24 between 16:30 and 17:00. [After clarification:] Change the duration to 20 minutes.",
+      "meaning_preserving_variant": "Find 90 minutes within 16:30-17:00 on 2026-11-24. [After clarification:] Make that 20 minutes instead.",
+      "context": {
+        "reference_time": "2026-11-17T12:00:00-05:00",
+        "event_date": "2026-11-24",
+        "timezone": "America/New_York",
+        "availability": ["09:00", "17:00"],
+        "events": [],
+        "preferences": []
+      },
+      "expected_action": "clarify_then_draft",
+      "reference_outcome": "First clarify infeasibility. Then retain date/window, replace 90 with 20, and propose a feasible 20-minute slot.",
+      "oracle": {
+        "duration": 20,
+        "lower": "16:30",
+        "upper": "17:00",
+        "clarification": "infeasible"
+      }
+    },
+    {
+      "id": "P19",
+      "group_id": "P19",
+      "slice": "out_of_scope",
+      "proposed_split": "test",
+      "request": "Schedule 30 minutes at 10:00 every Tuesday starting 2026-11-24.",
+      "meaning_preserving_variant": "Starting 2026-11-24, repeat a 10:00-10:30 session each Tuesday.",
+      "context": {
+        "reference_time": "2026-11-17T12:00:00-05:00",
+        "event_date": "2026-11-24",
+        "timezone": "America/New_York",
+        "availability": ["09:00", "17:00"],
+        "events": [],
+        "preferences": []
+      },
+      "expected_action": "clarify",
+      "reference_outcome": "Explain recurrence is unsupported and seek a single-date request; do not silently drop recurrence.",
+      "oracle": {
+        "clarification": "recurrence"
+      }
+    },
+    {
+      "id": "P20",
+      "group_id": "P20",
+      "slice": "ambiguous_identity",
+      "proposed_split": "test",
+      "request": "Move the project meeting on 2026-11-24 to 15:00.",
+      "meaning_preserving_variant": "Shift my project meeting to start at 15:00 on 2026-11-24.",
+      "context": {
+        "reference_time": "2026-11-17T12:00:00-05:00",
+        "event_date": "2026-11-24",
+        "timezone": "America/New_York",
+        "availability": ["09:00", "17:00"],
+        "events": [
+          {
+            "id": "E1",
+            "title": "Project meeting",
+            "start": "10:00",
+            "end": "10:30"
+          },
+          {
+            "id": "E2",
+            "title": "Project meeting",
+            "start": "13:00",
+            "end": "13:30"
+          }
+        ],
+        "preferences": []
+      },
+      "expected_action": "clarify",
+      "reference_outcome": "Ask which event, E1 or E2; do not guess an identity.",
+      "oracle": {
+        "clarification": "identity"
+      }
+    }
+  ],
+  "original_sha256": "16cd0eb6179beb97a02355c135f016674b28d7ae70462a64f902aa66ce706108"
+}
